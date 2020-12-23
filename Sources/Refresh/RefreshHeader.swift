@@ -45,6 +45,7 @@ public class RefreshHeader: RefreshComponment {
         let scrolled = -offset.y - insetTop
         if scrolled >= frame.height {
             state = .willRefreshing
+            pullingPercent = 1
         } else if scrolled > 0 {
             state = .pulling
             pullingPercent = scrolled / frame.height
