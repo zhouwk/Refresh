@@ -9,7 +9,6 @@ import UIKit
 
 let RefreshKVOPanKeyPath = "state"
 let RefreshKVOContenOffsetKeyPath = "contentOffset"
-let RefreshKVOFrameKeyPath = "frame"
 let RefreshKVOContentSizeKeyPath = "contentSize"
 let RefreshDefaultHeight = CGFloat(30)
 
@@ -55,7 +54,7 @@ public class RefreshComponment: UIView {
     weak var scrollView: UIScrollView?
 
     let rotationAnimKey = "transform.rotation.z"
-    let imageView = UIImageView()
+    let imageView = UIImageView(frame: CGRect(x: 0, y: 0, width: 20, height: 20))
     
 
 
@@ -65,15 +64,20 @@ public class RefreshComponment: UIView {
         imageView.image = UIImage(named: "refresh", in: .module, compatibleWith: nil)
         imageView.contentMode = .scaleAspectFit
         addSubview(imageView)
+        autoresizingMask = [.flexibleWidth]
+        
     }
 
         
     public override func didMoveToSuperview() {
         super.didMoveToSuperview()
         assert(superview == nil || superview is UIScrollView)
-        scrollView = superview as? UIScrollView
-        pan = scrollView?.panGestureRecognizer
-        kvo()
+        if let superview = superview as? UIScrollView {
+            scrollView = superview
+            pan = superview.panGestureRecognizer
+            kvo()
+            frame.size.width = superview.frame.width
+        }
     }
     
     public override func removeFromSuperview() {
@@ -88,10 +92,6 @@ public class RefreshComponment: UIView {
         scrollView?.addObserver(self,
                                 forKeyPath: RefreshKVOContenOffsetKeyPath,
                                 options: [.new, .old],
-                                context: nil)
-        scrollView?.addObserver(self,
-                                forKeyPath: RefreshKVOFrameKeyPath,
-                                options: [.initial, .new],
                                 context: nil)
         pan?.addObserver(self, forKeyPath: RefreshKVOPanKeyPath,
                          options: .new,
@@ -113,8 +113,6 @@ public class RefreshComponment: UIView {
         // 移除kvo的时机
         superview?.removeObserver(self, forKeyPath: RefreshKVOContenOffsetKeyPath,
                                    context: nil)
-        superview?.removeObserver(self, forKeyPath: RefreshKVOFrameKeyPath,
-                                   context: nil)
         pan?.removeObserver(self, forKeyPath: RefreshKVOPanKeyPath, context: nil)
         superview?.removeObserver(self, forKeyPath: RefreshKVOContentSizeKeyPath)
     }
@@ -127,8 +125,6 @@ public class RefreshComponment: UIView {
             if old != new {
                 contentOffsetDidChange(change![.newKey] as! CGPoint)
             }
-        } else if keyPath == RefreshKVOFrameKeyPath {
-            scrollViewFrameDidChange(change![.newKey] as! CGRect)
         } else if keyPath == RefreshKVOPanKeyPath {
             panStatusDidChange(UIGestureRecognizer.State(rawValue: change![.newKey] as! Int)!)
         } else if keyPath == RefreshKVOContentSizeKeyPath {
@@ -149,17 +145,9 @@ public class RefreshComponment: UIView {
     }
     
     func stateDidChanage(pre: RefreshState, now: RefreshState) {}
-
     func contentOffsetDidChange(_ offset: CGPoint) {}
     func panStatusDidChange(_ state: UIGestureRecognizer.State) {}
     func contentSizeDidChange(_ contentSize: CGSize) {}
-    func scrollViewFrameDidChange(_ frame: CGRect) {
-        self.frame.size.width = frame.width
-        // 不要在layoutSubViews中布局imageView，在scrollView滚动的过程中会不断的触发Refresher的layoutSubViews，在滚动过程同时要根据pullingPercent给imageView设置旋转，如果这样做，二者同时都会影响到imageView的frame，从而导致imageView的UI是诡异的
-        imageView.frame.size = CGSize(width: 20, height: 20)
-        imageView.center = CGPoint(x: self.frame.width * 0.5, y: self.frame.height * 0.5)
-    }
-    
     func beginRotation() {
         guard imageView.layer.animation(forKey: rotationAnimKey) == nil else {
             return;
@@ -180,6 +168,10 @@ public class RefreshComponment: UIView {
         }
     }
     
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        imageView.center = CGPoint(x: frame.width * 0.5, y: frame.height * 0.5)
+    }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
