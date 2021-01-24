@@ -17,7 +17,7 @@ public class RefreshFooter: RefreshComponment {
                     self.scrollView!.contentInset.bottom += self.frame.height
                 }
                 self.action()
-                self.pullingPercent = 1
+                self.pullingPercent = -1
                 self.beginRotation()
             }
         } else if now == .willRefreshing {
@@ -45,27 +45,31 @@ public class RefreshFooter: RefreshComponment {
         //             刷新结束，增加cellCount，reloadData(内部应该是有异步逻辑)之后立即访问contentSize，可能得到的是相对于reloadData之前更小的值(所以如果要想访问到正确的值
         //             最好异步访问，等待reloadData之后)， 从而导致convertY < scrollView!.frame.maxY - insetBottom，再次触发刷新
         
-        guard state != .refreshing, state != .idle else {
+        if state != .pulling && state != .willRefreshing {
             return
         }
         if scrollView!.contentSize.height <= scrollView!.frame.height - insetTop - insetBottom {
+            // 内容不足一页
             if offset.y > -insetTop {
-                state = scrollView!.isDragging ? .willRefreshing : .refreshing
+                // 向上拽动，拖动超过自身高度松手即可进入刷新
                 pullingPercent = -min(1, (offset.y + insetTop) / frame.height)
             } else {
-                state = scrollView!.isDragging ? .pulling : .idle
+                // 向下拽动
+                pullingPercent = 0
             }
         } else if offset.y >= scrollView!.contentSize.height - (scrollView!.frame.height - insetBottom) {
+            // 内容超出一页，且scrollView所有的内容已经拉到底部安全区域之上(比如tabbar、homeIndicatorBar)
             let beyondInsetBottom = offset.y - (scrollView!.contentSize.height - (scrollView!.frame.height - insetBottom))
-            if beyondInsetBottom >= frame.height {
-                state = scrollView!.isDragging ? .willRefreshing : .refreshing
-                pullingPercent = -1
-            } else {
-                state = scrollView!.isDragging ? .pulling : .idle
-                pullingPercent = -min(1, beyondInsetBottom / frame.height)
-            }
+            pullingPercent = -min(1, beyondInsetBottom / frame.height)
         } else {
-            state = scrollView!.isDragging ? .pulling : .idle
+            pullingPercent = 0
+        }
+        if scrollView!.isDragging {
+            state = .pulling
+        } else if pullingPercent == -1 {
+            state = .refreshing
+        } else if pullingPercent == 0 {
+            state = .idle
         }
     }
     
