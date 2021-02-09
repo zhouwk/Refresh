@@ -22,6 +22,10 @@ public class RefreshComponment: UIView {
     
     let action: RefreshAction
     
+    public var isRefreshing: Bool {
+        state == .refreshing
+    }
+    
     var state = RefreshState.idle {
         didSet {
             guard oldValue != state else {
