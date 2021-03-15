@@ -31,7 +31,9 @@ public class RefreshComponment: UIView {
             guard oldValue != state else {
                 return
             }
-            stateDidChanage(pre: oldValue, now: state)
+            DispatchQueue.main.async {
+                self.stateDidChanage(pre: oldValue, now: self.state)
+            }
         }
     }
     var insetTop: CGFloat {
